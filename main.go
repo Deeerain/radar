@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"radar/proxy"
 	"radar/resolvers"
 	"radar/resolvers/simple"
 	"sync"
@@ -26,6 +27,7 @@ const (
 )
 
 var debug bool
+var noProxy bool
 
 type ResolutionResult struct {
 	Name string
@@ -42,6 +44,7 @@ type CheckResult struct {
 
 func init() {
 	flag.BoolVar(&debug, "debug", false, "Enable debug mode")
+	flag.BoolVar(&noProxy, "no-proxy", false, "Disable proxy mode")
 }
 
 func main() {
@@ -75,6 +78,12 @@ func main() {
 	fmt.Println("██║  ██║██║  ██║██████╔╝██║  ██║██║  ██║")
 	fmt.Println("╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝")
 	fmt.Println("by Deerain\n" + Reset)
+
+	activeProxy := proxy.DetectActiveProxies()
+	if activeProxy.Detected && !noProxy {
+		fmt.Printf("%s[ INFO ]%s Active Proxy detected: %s at %s\n\n", Yellow, Reset, activeProxy.Type, activeProxy.Address)
+		proxy.ConfigureHttpClient(&client, activeProxy)
+	}
 
 	activeResolvers := map[string]resolvers.Resolver{
 		"ipify":    simple.New("https://api.ipify.org", client),
