@@ -9,7 +9,10 @@ jobs:
   build-and-release:
     name: Compile and Upload Assets
     runs-on: ubuntu-latest
-
+    
+    permissions:
+      contents: write
+    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -17,8 +20,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22' # Укажите версию Go, которую вы используете
-          cache: true        # Автоматически кэширует зависимости (go.sum)
+          go-version: '1.22'
+          cache: true
 
       - name: Build All Platforms via Makefile
         run: |
