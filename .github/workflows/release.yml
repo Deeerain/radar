@@ -1,0 +1,37 @@
+name: Build and Release Radar
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    name: Compile and Upload Assets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22' # Укажите версию Go, которую вы используете
+          cache: true        # Автоматически кэширует зависимости (go.sum)
+
+      - name: Build All Platforms via Makefile
+        run: |
+          make all
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/radar-windows-amd64.exe
+            build/radar-linux-amd64
+            build/radar-darwin-amd64
+            build/radar-darwin-arm64
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
