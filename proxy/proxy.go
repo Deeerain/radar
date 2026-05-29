@@ -20,9 +20,7 @@ type ProxyInfo struct {
 	URL      *url.URL
 }
 
-// DetectActiveProxies ищет прокси и парсит его адрес в структуру URL
 func DetectActiveProxies() ProxyInfo {
-	// 1. Проверяем системные переменные окружения
 	envProxies := []string{"ALL_PROXY", "all_proxy", "HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"}
 	for _, env := range envProxies {
 		if val := os.Getenv(env); val != "" {
@@ -43,7 +41,6 @@ func DetectActiveProxies() ProxyInfo {
 		}
 	}
 
-	// 2. Список дефолтных портов локальных прокси-клиентов
 	commonPorts := []struct {
 		addr   string
 		scheme string
@@ -69,21 +66,17 @@ func DetectActiveProxies() ProxyInfo {
 	return ProxyInfo{Detected: false}
 }
 
-// ConfigureHttpClient настраивает глобальный транспорт в зависимости от типа прокси
 func ConfigureHttpClient(httpClient *http.Client, p ProxyInfo) {
 	if !p.Detected || p.URL == nil {
-		// Если прокси не найден, оставляем дефолтный чистый Go-транспорт
 		httpClient.Transport = &http.Transport{
 			Proxy: http.ProxyFromEnvironment, // на всякий случай
 		}
 		return
 	}
 
-	// Если это SOCKS5
 	if strings.HasPrefix(p.URL.Scheme, "socks") {
 		dialer, err := proxy.FromURL(p.URL, proxy.Direct)
 		if err == nil {
-			// Кастуем контекстный диалер для правильной работы таймаутов
 			if contextDialer, ok := dialer.(proxy.ContextDialer); ok {
 				httpClient.Transport = &http.Transport{
 					DialContext: contextDialer.DialContext,
@@ -93,7 +86,6 @@ func ConfigureHttpClient(httpClient *http.Client, p ProxyInfo) {
 		}
 	}
 
-	// Если это стандартный HTTP-прокси
 	httpClient.Transport = &http.Transport{
 		Proxy: http.ProxyURL(p.URL),
 	}
