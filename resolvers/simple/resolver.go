@@ -4,36 +4,23 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"regexp"
-	"time"
 )
 
 type SimpleResolver struct {
-	url string
+	url        string
+	httpClient *http.Client
 }
 
-func New(url string) *SimpleResolver {
+func New(url string, client http.Client) *SimpleResolver {
 	return &SimpleResolver{
-		url: url,
+		url:        url,
+		httpClient: &client,
 	}
 }
 
 func (r *SimpleResolver) Resolve(ctx context.Context) (string, error) {
-	client := http.Client{
-		Transport: &http.Transport{
-			Proxy: nil,
-			DialContext: (&net.Dialer{
-				Timeout:   5 * time.Second,
-				KeepAlive: 30 * time.Second,
-				Resolver: &net.Resolver{
-					PreferGo: false,
-				},
-			}).DialContext,
-		},
-	}
-
 	var req *http.Request
 	var err error
 
@@ -51,7 +38,7 @@ func (r *SimpleResolver) Resolve(ctx context.Context) (string, error) {
 
 	req.Header.Set("User-Agent", "curl/8.4.0")
 
-	resp, err := client.Do(req)
+	resp, err := r.httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}

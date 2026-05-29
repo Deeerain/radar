@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"radar/resolvers"
@@ -52,6 +53,19 @@ func main() {
 		slog.Debug("Debug mode enabled")
 	}
 
+	client := http.Client{
+		Transport: &http.Transport{
+			Proxy: nil,
+			DialContext: (&net.Dialer{
+				Timeout:   5 * time.Second,
+				KeepAlive: 30 * time.Second,
+				Resolver: &net.Resolver{
+					PreferGo: true,
+				},
+			}).DialContext,
+		},
+	}
+
 	ctx := context.Background()
 
 	fmt.Println(Green + "██████╗  █████╗ ██████╗  █████╗ ██████╗")
@@ -63,10 +77,10 @@ func main() {
 	fmt.Println("by Deerain\n" + Reset)
 
 	activeResolvers := map[string]resolvers.Resolver{
-		"ipify":    simple.New("https://api.ipify.org"),
-		"myip.com": simple.New("https://api.myip.com"),
-		"2ip.io":   simple.New("https://api.2ip.io"),
-		"beget.ru": simple.New("https://ip.beget.ru"),
+		"ipify":    simple.New("https://api.ipify.org", client),
+		"myip.com": simple.New("https://api.myip.com", client),
+		"2ip.io":   simple.New("https://api.2ip.io", client),
+		"beget.ru": simple.New("https://ip.beget.ru", client),
 	}
 
 	blockedServices := map[string]string{
@@ -89,7 +103,7 @@ func main() {
 	startTime := time.Now()
 
 	go StartIPResolvers(activeResolvers, &wgResolvers, ctx, ipChan)
-	go StartBlockChecker(blockedServices, &wgCheckers, ctx, checkChan)
+	go StartBlockChecker(blockedServices, &wgCheckers, ctx, &client, checkChan)
 
 	var fetchedIPs = make([]ResolutionResult, 0, len(activeResolvers))
 	for i := 0; i < len(activeResolvers); i++ {
@@ -148,13 +162,13 @@ func StartIPResolvers(activeResolvers map[string]resolvers.Resolver, wg *sync.Wa
 	close(ch)
 }
 
-func StartBlockChecker(services map[string]string, wg *sync.WaitGroup, ctx context.Context, ch chan<- CheckResult) {
+func StartBlockChecker(services map[string]string, wg *sync.WaitGroup, ctx context.Context, client *http.Client, ch chan<- CheckResult) {
 	for name, url := range services {
 		wg.Add(1)
 
 		go func(n string, u string) {
 			defer wg.Done()
-			ch <- CheckBlockedService(ctx, n, u)
+			ch <- CheckBlockedService(ctx, n, u, client)
 		}(name, url)
 
 	}
@@ -185,11 +199,9 @@ func HasSplitTunneling(ips []ResolutionResult) bool {
 	return false
 }
 
-func CheckBlockedService(ctx context.Context, name string, url string) CheckResult {
+func CheckBlockedService(ctx context.Context, name string, url string, client *http.Client) CheckResult {
 	subCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-
-	client := &http.Client{}
 
 	req, err := http.NewRequestWithContext(subCtx, "HEAD", url, nil)
 	if err != nil {
