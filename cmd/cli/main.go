@@ -8,11 +8,12 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"radar/proxy"
-	"radar/resolvers"
-	"radar/resolvers/simple"
 	"sync"
 	"time"
+
+	"github.com/Deeerain/radar/internal/proxy"
+	"github.com/Deeerain/radar/internal/resolvers"
+	"github.com/Deeerain/radar/internal/resolvers/simple"
 )
 
 const (

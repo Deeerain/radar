@@ -1,4 +1,4 @@
-module radar
+module github.com/Deeerain/radar
 
 go 1.26.2
 
